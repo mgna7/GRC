@@ -214,7 +214,8 @@ For complete port reference, see [PORT_REFERENCE.md](PORT_REFERENCE.md).
 
 3. **Start the services**
    ```bash
-   docker-compose up -d
+   docker-compose -f docker-compose.microservices.yml build
+   docker-compose -f docker-compose.microservices.yml up -d
    ```
 
 4. **Verify installation**
