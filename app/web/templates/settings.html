@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+
+{% block title %}Settings - ComplianceIQ{% endblock %}
+
+{% block content %}
+<section class="settings-header">
+    <div>
+        <h1>Environment Settings</h1>
+        <p>Connect ServiceNow PDIs or production tenants, manage activation, and orchestrate remote widgets.</p>
+    </div>
+</section>
+
+<section class="settings-grid">
+    <article class="settings-card">
+        <h2>Add ServiceNow Instance</h2>
+        <p class="muted">Provide credentials to establish a secure connection. Metadata helps classify the tenant.</p>
+        <form id="instanceForm" class="settings-form">
+            <label>Instance Name</label>
+            <input type="text" name="instance_name" placeholder="Acme Production" required />
+
+            <label>Instance URL</label>
+            <input type="url" name="instance_url" placeholder="https://devXXXXX.service-now.com" required />
+
+            <label>API Username</label>
+            <input type="text" name="api_user" placeholder="admin" required />
+
+            <label>API Token / Password</label>
+            <input type="password" name="api_token" required />
+
+            <label>Metadata (JSON)</label>
+            <textarea name="metadata" placeholder='{"environment": "production", "region": "us-east"}'></textarea>
+
+            <button type="submit" class="primary-btn">Connect Instance</button>
+        </form>
+    </article>
+
+    <article class="settings-card">
+        <h2>Connected Instances</h2>
+        <div id="instanceTableContainer" class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>URL</th>
+                        <th>Status</th>
+                        <th>Controls</th>
+                        <th>Risks</th>
+                        <th>Widgets</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="instanceTableBody">
+                    {% for instance in instances %}
+                    <tr data-instance-id="{{ instance.id }}">
+                        <td>{{ instance.instance_name }}</td>
+                        <td><a href="{{ instance.instance_url }}" target="_blank" rel="noopener">{{ instance.instance_url }}</a></td>
+                        <td>
+                            <span class="status-pill {{ 'online' if instance.is_active else 'offline' }}">
+                                {{ 'Active' if instance.is_active else 'Suspended' }}
+                            </span>
+                        </td>
+                        <td>{{ instance.control_records|length }}</td>
+                        <td>{{ instance.risk_records|length }}</td>
+                        <td>{{ instance.widget_configurations|length }}</td>
+                        <td>{{ instance.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="table-actions">
+                            <button class="secondary-btn" data-action="toggle">
+                                {{ 'Disable' if instance.is_active else 'Enable' }}
+                            </button>
+                            <button class="danger-btn" data-action="delete">Remove</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not instances %}
+                    <tr>
+                        <td colspan="8" class="muted">No instances connected yet.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='/js/settings.js') }}"></script>
+{% endblock %}

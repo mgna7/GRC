@@ -1,0 +1,141 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - ComplianceIQ{% endblock %}
+
+{% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="dashboard-hero">
+    <div>
+        <h1>Operational Intelligence</h1>
+        <p>Real-time perspective across ServiceNow GRC: controls, risks, compliance gaps, and exceptions.</p>
+    </div>
+    <div class="hero-meta">
+        <span class="badge success">Secured</span>
+        <span class="timestamp">Last refreshed: <strong>{{ summary.instances[0].updated_at.strftime('%Y-%m-%d %H:%M') if summary.instances else 'N/A' }}</strong></span>
+    </div>
+</section>
+
+<section class="metrics-row">
+    <article class="metric-card">
+        <h2>Total Instances</h2>
+        <p class="value" id="metricTotalInstances">{{ summary.total_instances }}</p>
+        <span class="caption">Managed ServiceNow tenants</span>
+    </article>
+    <article class="metric-card">
+        <h2>Active Controls</h2>
+        <p class="value" id="metricTotalControls">{{ summary.total_controls }}</p>
+        <span class="caption">Synced from ServiceNow</span>
+    </article>
+    <article class="metric-card">
+        <h2>Risk Records</h2>
+        <p class="value" id="metricTotalRisks">{{ summary.total_risks }}</p>
+        <span class="caption">Tracked exposures</span>
+    </article>
+    <article class="metric-card">
+        <h2>Widget Deployments</h2>
+        <p class="value" id="metricTotalWidgets">{{ summary.total_widgets }}</p>
+        <span class="caption">Live dashboards in ServiceNow</span>
+    </article>
+</section>
+
+<section class="dashboard-grid">
+    <aside class="instances-panel">
+        <div class="panel-header">
+            <h3>Instances</h3>
+            <a class="link" href="/settings">Manage</a>
+        </div>
+        <ul id="instanceList">
+            {% for instance in summary.instances %}
+            <li class="instance-card" data-instance-id="{{ instance.instance_id }}">
+                <div class="instance-card-header">
+                    <span class="instance-name">{{ instance.instance_name }}</span>
+                    <span class="status-pill {{ 'online' if instance.is_active else 'offline' }}">{{ 'Active' if instance.is_active else 'Suspended' }}</span>
+                </div>
+                <p class="instance-url">{{ instance.instance_url }}</p>
+                <div class="instance-stats">
+                    <span><strong>{{ instance.control_count }}</strong> controls</span>
+                    <span><strong>{{ instance.risk_count }}</strong> risks</span>
+                    <span><strong>{{ instance.widget_count }}</strong> widgets</span>
+                </div>
+                {% if instance.latest_analysis_summary %}
+                <div class="instance-meta">
+                    <span class="label">{{ instance.latest_analysis_type|capitalize }} insight</span>
+                    <p>{{ instance.latest_analysis_summary }}</p>
+                </div>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% if not summary.instances %}
+        <div class="empty-state">
+            <p>No instances connected yet. Head to <a href="/settings">settings</a> to add your first integration.</p>
+        </div>
+        {% endif %}
+    </aside>
+
+    <section class="analytics-panel">
+        <div class="panel-header">
+            <h3 id="analyticsTitle">Analytics Overview</h3>
+            <div class="panel-actions">
+                <button id="refreshAnalytics" class="secondary-btn">Refresh Data</button>
+                <button id="replayControls" class="secondary-btn">Replay Control Analysis</button>
+                <button id="replayRisks" class="secondary-btn">Replay Risk Analysis</button>
+            </div>
+        </div>
+        <div class="chart-grid">
+            <article class="chart-card">
+                <header>
+                    <h4>Control Effectiveness</h4>
+                    <span class="chart-subtitle">Score distribution and forecast</span>
+                </header>
+                <canvas id="controlChart"></canvas>
+            </article>
+            <article class="chart-card">
+                <header>
+                    <h4>Risk Heatmap</h4>
+                    <span class="chart-subtitle">Likelihood versus impact</span>
+                </header>
+                <canvas id="riskChart"></canvas>
+            </article>
+            <article class="chart-card">
+                <header>
+                    <h4>Compliance Gaps</h4>
+                    <span class="chart-subtitle">High-priority exceptions</span>
+                </header>
+                <canvas id="complianceChart"></canvas>
+            </article>
+        </div>
+
+        <section class="insights-section">
+            <div class="panel-header">
+                <h3>Exception and Issue Log</h3>
+            </div>
+            <div id="exceptionContainer" class="exception-grid">
+                <p class="muted">Select an instance to load exception insights.</p>
+            </div>
+        </section>
+
+        <section class="timeline-section">
+            <div class="panel-header">
+                <h3>Analysis Timeline</h3>
+            </div>
+            <ul id="timelineContainer" class="timeline-list">
+                <li class="muted">Run an analysis to populate the timeline.</li>
+            </ul>
+        </section>
+    </section>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" integrity="sha384-zl0e2r90oCbGyF/F7fs/3Gzdh0dX8GZFODdgNpTiFqouBZfyqCkCmZJLdnOjFkMr" crossorigin="anonymous"></script>
+<script>
+    window.__INITIAL_SUMMARY__ = {{ summary.model_dump(mode="json") | tojson }};
+</script>
+<script src="{{ url_for('static', path='/js/dashboard.js') }}"></script>
+{% endblock %}

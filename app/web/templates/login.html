@@ -1,0 +1,24 @@
+{% extends "layout.html" %}
+
+{% block title %}Login • ComplianceIQ{% endblock %}
+
+{% block content %}
+<section class="auth-container">
+    <div class="auth-card">
+        <h1>Sign in to ComplianceIQ</h1>
+        <p class="subtitle">Securely manage your ServiceNow GRC intelligence.</p>
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+        <form method="post" action="/login" class="auth-form">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="admin@complianceiq.local" required />
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="••••••••" required />
+
+            <button type="submit" class="primary-btn">Sign In</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

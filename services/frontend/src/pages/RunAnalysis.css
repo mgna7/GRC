@@ -1,0 +1,272 @@
+/* Run Analysis Styling */
+
+.run-analysis-container {
+  min-height: 100vh;
+  background-color: #f9fafb;
+}
+
+.form-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 32px;
+}
+
+.analysis-form {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Instance Selector */
+.no-instances {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.no-instances p {
+  margin-bottom: 16px;
+  color: #6b7280;
+}
+
+.instance-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.instance-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.instance-option:hover {
+  border-color: #667eea;
+  background: #f9fafb;
+}
+
+.instance-option input[type='radio'] {
+  position: absolute;
+  opacity: 0;
+}
+
+.instance-option input[type='radio']:checked ~ .instance-info,
+.instance-option input[type='radio']:checked ~ .radio-check {
+  color: #667eea;
+}
+
+.instance-option:has(input[type='radio']:checked) {
+  border-color: #667eea;
+  background: #eef2ff;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.instance-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 32px;
+}
+
+.instance-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.instance-url {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.radio-check {
+  font-size: 20px;
+  color: transparent;
+  transition: color 0.2s;
+}
+
+.instance-option:has(input[type='radio']:checked) .radio-check {
+  color: #667eea;
+}
+
+/* Analysis Type Selector */
+.analysis-type-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.analysis-type-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.analysis-type-option:hover {
+  border-color: #667eea;
+  background: #f9fafb;
+}
+
+.analysis-type-option input[type='radio'] {
+  position: absolute;
+  opacity: 0;
+}
+
+.analysis-type-option:has(input[type='radio']:checked) {
+  border-color: #667eea;
+  background: #eef2ff;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.type-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: 32px;
+}
+
+.type-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.type-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.type-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.type-desc {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.analysis-type-option:has(input[type='radio']:checked) .radio-check {
+  color: #667eea;
+}
+
+/* Info Sidebar */
+.info-sidebar {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  height: fit-content;
+  position: sticky;
+  top: 24px;
+}
+
+.info-sidebar h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 20px;
+}
+
+.info-section {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.info-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.info-section h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.info-section p {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.info-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.info-section ul li {
+  font-size: 13px;
+  color: #6b7280;
+  padding: 4px 0;
+  padding-left: 20px;
+  position: relative;
+}
+
+.info-section ul li::before {
+  content: "•";
+  position: absolute;
+  left: 8px;
+  color: #667eea;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .form-container {
+    grid-template-columns: 1fr;
+  }
+
+  .info-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .instance-option,
+  .analysis-type-option {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .type-content {
+    margin-left: 0;
+  }
+
+  .instance-info {
+    margin-left: 0;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .btn-cancel,
+  .btn-submit {
+    width: 100%;
+  }
+}

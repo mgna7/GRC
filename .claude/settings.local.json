@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \".\\scripts\\create-service-structure.ps1\")",
+      "Bash(powershell:*)",
+      "Bash(docker build:*)",
+      "Bash(docker-compose -f docker-compose.microservices.yml build analysis-service)",
+      "Bash(docker-compose:*)",
+      "Bash(curl:*)",
+      "Bash(timeout 5 curl:*)",
+      "Bash(docker exec:*)",
+      "Bash(timeout 10 powershell:*)",
+      "Bash(timeout 10 curl:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(docker cp:*)",
+      "Bash(echo:*)",
+      "Bash(python -c:*)",
+      "Bash(docker ps:*)",
+      "Bash(findstr:*)",
+      "Bash(docker restart:*)",
+      "Bash(docker logs:*)",
+      "Bash(timeout 5 docker exec:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

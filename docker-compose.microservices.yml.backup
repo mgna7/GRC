@@ -1,0 +1,567 @@
+version: '3.9'
+
+networks:
+  complianceiq-network:
+    driver: bridge
+
+volumes:
+  postgres-auth-data:
+  postgres-core-data:
+  postgres-analysis-data:
+  postgres-audit-data:
+  redis-data:
+  rabbitmq-data:
+  minio-data:
+
+services:
+  # ============================================================================
+  # INFRASTRUCTURE SERVICES
+  # ============================================================================
+
+  # PostgreSQL Databases
+  postgres-auth:
+    image: postgres:16-alpine
+    container_name: complianceiq-postgres-auth
+    environment:
+      POSTGRES_DB: complianceiq_auth
+      POSTGRES_USER: complianceiq
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-complianceiq_dev}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-auth-data:/var/lib/postgresql/data
+    networks:
+      - complianceiq-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U complianceiq -d complianceiq_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-core:
+    image: postgres:16-alpine
+    container_name: complianceiq-postgres-core
+    environment:
+      POSTGRES_DB: complianceiq_core
+      POSTGRES_USER: complianceiq
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-complianceiq_dev}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-core-data:/var/lib/postgresql/data
+    networks:
+      - complianceiq-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U complianceiq -d complianceiq_core"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-analysis:
+    image: postgres:16-alpine
+    container_name: complianceiq-postgres-analysis
+    environment:
+      POSTGRES_DB: complianceiq_analysis
+      POSTGRES_USER: complianceiq
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-complianceiq_dev}
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-analysis-data:/var/lib/postgresql/data
+    networks:
+      - complianceiq-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U complianceiq -d complianceiq_analysis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-audit:
+    image: postgres:16-alpine
+    container_name: complianceiq-postgres-audit
+    environment:
+      POSTGRES_DB: complianceiq_audit
+      POSTGRES_USER: complianceiq
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-complianceiq_dev}
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres-audit-data:/var/lib/postgresql/data
+    networks:
+      - complianceiq-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U complianceiq -d complianceiq_audit"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: complianceiq-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_dev_password}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - complianceiq-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: complianceiq-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: complianceiq
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-rabbitmq_dev_password}
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - complianceiq-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # MinIO Object Storage (S3-compatible)
+  minio:
+    image: minio/minio:latest
+    container_name: complianceiq-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-complianceiq}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-complianceiq_minio_dev}
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    volumes:
+      - minio-data:/data
+    networks:
+      - complianceiq-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================================================
+  # MICROSERVICES
+  # ============================================================================
+
+  # Auth Service (Port 8001)
+  auth-service:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: complianceiq-auth-service
+    environment:
+      # Database
+      DATABASE_URL: postgresql+psycopg2://complianceiq:${DB_PASSWORD:-complianceiq_dev}@postgres-auth:5432/complianceiq_auth
+
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev_password}@redis:6379/0
+
+      # JWT Configuration
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-key-change-in-production}
+      JWT_ALGORITHM: HS256
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 15
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: 7
+
+      # Service Configuration
+      SERVICE_NAME: auth-service
+      SERVICE_PORT: 8000
+      LOG_LEVEL: INFO
+      ENVIRONMENT: development
+
+      # CORS
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8000
+
+      # Email Service (for verification)
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@complianceiq.com}
+    ports:
+      - "8001:8000"
+    networks:
+      - complianceiq-network
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # User Service (Port 8002)
+  user-service:
+    build:
+      context: ./services/user
+      dockerfile: Dockerfile
+    container_name: complianceiq-user-service
+    environment:
+      DATABASE_URL: postgresql+psycopg2://complianceiq:${DB_PASSWORD:-complianceiq_dev}@postgres-core:5432/complianceiq_core
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev_password}@redis:6379/1
+      AUTH_SERVICE_URL: http://auth-service:8000
+      SERVICE_NAME: user-service
+      SERVICE_PORT: 8000
+      LOG_LEVEL: INFO
+      ENVIRONMENT: development
+    ports:
+      - "8002:8000"
+    networks:
+      - complianceiq-network
+    depends_on:
+      postgres-core:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Organization Service (Port 8003)
+  organization-service:
+    build:
+      context: ./services/organization
+      dockerfile: Dockerfile
+    container_name: complianceiq-organization-service
+    environment:
+      DATABASE_URL: postgresql+psycopg2://complianceiq:${DB_PASSWORD:-complianceiq_dev}@postgres-core:5432/complianceiq_core
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev_password}@redis:6379/2
+      AUTH_SERVICE_URL: http://auth-service:8000
+      USER_SERVICE_URL: http://user-service:8000
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-}
+      SERVICE_NAME: organization-service
+      SERVICE_PORT: 8000
+      LOG_LEVEL: INFO
+      ENVIRONMENT: development
+    ports:
+      - "8003:8000"
+    networks:
+      - complianceiq-network
+    depends_on:
+      postgres-core:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Instance Service (Port 8004)
+  instance-service:
+    build:
+      context: ./services/instance
+      dockerfile: Dockerfile
+    container_name: complianceiq-instance-service
+    environment:
+      DATABASE_URL: postgresql+psycopg2://complianceiq:${DB_PASSWORD:-complianceiq_dev}@postgres-core:5432/complianceiq_core
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev_password}@redis:6379/3
+      AUTH_SERVICE_URL: http://auth-service:8000
+      ORGANIZATION_SERVICE_URL: http://organization-service:8000
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dev-32-byte-encryption-key-here}
+      SERVICE_NAME: instance-service
+      SERVICE_PORT: 8000
+      LOG_LEVEL: INFO
+      ENVIRONMENT: development
+      SERVICENOW_TIMEOUT_SECONDS: 15
+    ports:
+      - "8004:8000"
+    networks:
+      - complianceiq-network
+    depends_on:
+      postgres-core:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Analysis Service (Port 8005)
+  analysis-service:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    container_name: complianceiq-analysis-service
+    environment:
+      DATABASE_URL: postgresql+psycopg2://complianceiq:${DB_PASSWORD:-complianceiq_dev}@postgres-analysis:5432/complianceiq_analysis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev_password}@redis:6379/4
+      RABBITMQ_URL: amqp://complianceiq:${RABBITMQ_PASSWORD:-rabbitmq_dev_password}@rabbitmq:5672/
+      AUTH_SERVICE_URL: http://auth-service:8000
+      INSTANCE_SERVICE_URL: http://instance-service:8000
+      SERVICE_NAME: analysis-service
+      SERVICE_PORT: 8000
+      LOG_LEVEL: INFO
+      ENVIRONMENT: development
+    ports:
+      - "8005:8000"
+    networks:
+      - complianceiq-network
+    depends_on:
+      postgres-analysis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      instance-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Celery Worker for Analysis Jobs
+  celery-worker-analysis:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    container_name: complianceiq-celery-worker-analysis
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      DATABASE_URL: postgresql+psycopg2://complianceiq:${DB_PASSWORD:-complianceiq_dev}@postgres-analysis:5432/complianceiq_analysis
+      RABBITMQ_URL: amqp://complianceiq:${RABBITMQ_PASSWORD:-rabbitmq_dev_password}@rabbitmq:5672/
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev_password}@redis:6379/4
+      INSTANCE_SERVICE_URL: http://instance-service:8000
+      SERVICE_NAME: celery-worker-analysis
+      LOG_LEVEL: INFO
+      ENVIRONMENT: development
+    networks:
+      - complianceiq-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres-analysis:
+        condition: service_healthy
+      instance-service:
+        condition: service_started
+    restart: unless-stopped
+
+  # Insights Service (Port 8006)
+  insights-service:
+    build:
+      context: ./services/insights
+      dockerfile: Dockerfile
+    container_name: complianceiq-insights-service
+    environment:
+      DATABASE_URL: postgresql+psycopg2://complianceiq:${DB_PASSWORD:-complianceiq_dev}@postgres-analysis:5432/complianceiq_analysis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev_password}@redis:6379/5
+      AUTH_SERVICE_URL: http://auth-service:8000
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-complianceiq}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-complianceiq_minio_dev}
+      SERVICE_NAME: insights-service
+      SERVICE_PORT: 8000
+      LOG_LEVEL: INFO
+      ENVIRONMENT: development
+    ports:
+      - "8006:8000"
+    networks:
+      - complianceiq-network
+    depends_on:
+      postgres-analysis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      minio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Dashboard Service (Port 8008)
+  dashboard-service:
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile
+    container_name: complianceiq-dashboard-service
+    environment:
+      DATABASE_URL: postgresql+psycopg2://complianceiq:${DB_PASSWORD:-complianceiq_dev}@postgres-analysis:5432/complianceiq_analysis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev_password}@redis:6379/6
+      AUTH_SERVICE_URL: http://auth-service:8000
+      INSTANCE_SERVICE_URL: http://instance-service:8000
+      ANALYSIS_SERVICE_URL: http://analysis-service:8000
+      SERVICE_NAME: dashboard-service
+      SERVICE_PORT: 8000
+      LOG_LEVEL: INFO
+      ENVIRONMENT: development
+    ports:
+      - "8008:8000"
+    networks:
+      - complianceiq-network
+    depends_on:
+      postgres-analysis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Audit Service (Port 8010)
+  audit-service:
+    build:
+      context: ./services/audit
+      dockerfile: Dockerfile
+    container_name: complianceiq-audit-service
+    environment:
+      DATABASE_URL: postgresql+psycopg2://complianceiq:${DB_PASSWORD:-complianceiq_dev}@postgres-audit:5432/complianceiq_audit
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev_password}@redis:6379/7
+      RABBITMQ_URL: amqp://complianceiq:${RABBITMQ_PASSWORD:-rabbitmq_dev_password}@rabbitmq:5672/
+      AUTH_SERVICE_URL: http://auth-service:8000
+      SERVICE_NAME: audit-service
+      SERVICE_PORT: 8000
+      LOG_LEVEL: INFO
+      ENVIRONMENT: development
+    ports:
+      - "8010:8000"
+    networks:
+      - complianceiq-network
+    depends_on:
+      postgres-audit:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================================================
+  # API GATEWAY (Kong)
+  # ============================================================================
+
+  kong:
+    image: kong:3.4-alpine
+    container_name: complianceiq-kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl
+    ports:
+      - "8000:8000"   # Proxy (HTTP)
+      - "8443:8443"   # Proxy (HTTPS)
+      - "8444:8001"   # Admin API
+    volumes:
+      - ./kong:/kong/declarative
+    networks:
+      - complianceiq-network
+    depends_on:
+      - auth-service
+      - user-service
+      - organization-service
+      - instance-service
+      - analysis-service
+      - insights-service
+      - dashboard-service
+      - audit-service
+    restart: unless-stopped
+
+  # ============================================================================
+  # FRONTEND (React Application)
+  # ============================================================================
+
+  frontend:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: complianceiq-frontend
+    environment:
+      REACT_APP_API_GATEWAY_URL: http://localhost:8000
+      REACT_APP_ENVIRONMENT: development
+      WDS_SOCKET_PORT: 0
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./services/frontend/src:/app/src
+      - ./services/frontend/public:/app/public
+    networks:
+      - complianceiq-network
+    depends_on:
+      - kong
+    restart: unless-stopped
+
+  # ============================================================================
+  # MONITORING (Optional for development)
+  # ============================================================================
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: complianceiq-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+    networks:
+      - complianceiq-network
+    restart: unless-stopped
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: complianceiq-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SERVER_ROOT_URL: http://localhost:3001
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./monitoring/grafana:/etc/grafana/provisioning
+    networks:
+      - complianceiq-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}ComplianceIQ{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/app.css') }}" />
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header class="top-nav">
+        <div class="brand">
+            <span class="logo">CIQ</span>
+            <span class="brand-name">ComplianceIQ</span>
+        </div>
+        {% if user %}
+        <nav class="nav-links">
+            <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
+            <a href="/settings" class="{% if request.url.path.startswith('/settings') %}active{% endif %}">Settings</a>
+        </nav>
+        <form method="post" action="/logout">
+            <button type="submit" class="logout-btn">Logout ({{ user.email }})</button>
+        </form>
+        {% endif %}
+    </header>
+
+    <main class="page-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
