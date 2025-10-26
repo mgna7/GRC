@@ -1,82 +1,26 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-
-// Pages
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import InstanceList from './pages/InstanceList';
-import AddInstance from './pages/AddInstance';
-import AnalysisList from './pages/AnalysisList';
-import RunAnalysis from './pages/RunAnalysis';
-
-import './App.css';
-
-// Protected Route Component
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading, token, user } = useAuth();
-
-  console.log('ProtectedRoute - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'token:', token, 'user:', user);
-
-  if (isLoading) {
-    console.log('ProtectedRoute - showing loading screen');
-    return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    console.log('ProtectedRoute - not authenticated, redirecting to login');
-    return <Navigate to="/login" replace />;
-  }
-
-  console.log('ProtectedRoute - authenticated, rendering children');
-  return <>{children}</>;
-};
-
-// Public Route Component (redirect to dashboard if already authenticated)
-interface PublicRouteProps {
-  children: React.ReactNode;
-}
-
-const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-};
+import React from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import { DashboardPage } from './modules/dashboard/pages/DashboardPage'
+import { InstancesPage } from './modules/instances/pages/InstancesPage'
+import { AnalysisListPage } from './modules/analysis/pages/AnalysisListPage'
+import { RunAnalysisPage } from './modules/analysis/pages/RunAnalysisPage'
+import { LoginPage } from './modules/auth/pages/LoginPage'
+import { RegisterPage } from './modules/auth/pages/RegisterPage'
+import { ProtectedRoute, PublicRoute } from './routes/RouteGuards'
+import { ConnectInstancePage } from './modules/instances/pages/ConnectInstancePage'
+import './App.css'
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Public Routes */}
           <Route
             path="/login"
             element={
               <PublicRoute>
-                <Login />
+                <LoginPage />
               </PublicRoute>
             }
           />
@@ -84,61 +28,51 @@ function App() {
             path="/register"
             element={
               <PublicRoute>
-                <Register />
+                <RegisterPage />
               </PublicRoute>
             }
           />
-
-          {/* Protected Routes */}
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <DashboardPage />
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/instances"
             element={
               <ProtectedRoute>
-                <InstanceList />
+                <InstancesPage />
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/instances/new"
             element={
               <ProtectedRoute>
-                <AddInstance />
+                <ConnectInstancePage />
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/analysis"
             element={
               <ProtectedRoute>
-                <AnalysisList />
+                <AnalysisListPage />
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/analysis/new"
             element={
               <ProtectedRoute>
-                <RunAnalysis />
+                <RunAnalysisPage />
               </ProtectedRoute>
             }
           />
-
-          {/* Default Route */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-          {/* 404 Route */}
           <Route
             path="*"
             element={
@@ -152,7 +86,7 @@ function App() {
         </Routes>
       </Router>
     </AuthProvider>
-  );
+  )
 }
 
-export default App;
+export default App

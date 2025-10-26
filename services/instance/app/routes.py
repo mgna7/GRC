@@ -4,20 +4,37 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
+import json
 
 from app.database import get_db
 from app.schemas import (
     InstanceCreate,
     InstanceUpdate,
     InstanceResponse,
+    ConnectionTestRequest,
     ConnectionTestResponse,
     SyncRequest,
-    SyncResponse
+    SyncResponse,
+    InstanceDatasetResponse,
 )
 from app.service import InstanceService
 from app.auth import get_current_user, get_current_organization_id
 
 router = APIRouter(prefix="/api/v1/instances", tags=["Instances"])
+
+
+@router.post("/test-connection", response_model=ConnectionTestResponse)
+async def test_connection_credentials(
+    request_data: ConnectionTestRequest,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization_id)
+):
+    """Validate ServiceNow credentials before saving."""
+    service = InstanceService(db)
+    try:
+        return service.test_credentials(request_data)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 @router.post("", response_model=InstanceResponse, status_code=status.HTTP_201_CREATED)
@@ -115,7 +132,10 @@ async def test_connection(
         result = service.test_connection(instance_id, organization_id)
         return result
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        status_code = (
+            status.HTTP_404_NOT_FOUND if "not found" in str(e).lower() else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=str(e))
 
 
 @router.post("/{instance_id}/sync", response_model=SyncResponse)
@@ -133,7 +153,29 @@ async def sync_instance(
             sync_id=sync_history.id,
             status=sync_history.status,
             message="Sync initiated successfully",
-            started_at=sync_history.started_at
+            started_at=sync_history.started_at,
+            records_synced=json.loads(sync_history.records_synced or "{}") if sync_history.records_synced else None,
         )
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        status_code = (
+            status.HTTP_404_NOT_FOUND if "not found" in str(e).lower() else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=str(e))
+
+
+@router.get("/{instance_id}/datasets", response_model=List[InstanceDatasetResponse])
+async def get_instance_datasets(
+    instance_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization_id)
+):
+    """Retrieve synchronized datasets for an instance."""
+    service = InstanceService(db)
+    try:
+        datasets = service.list_datasets(instance_id, organization_id)
+        return datasets
+    except ValueError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND if "not found" in str(exc).lower() else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc))

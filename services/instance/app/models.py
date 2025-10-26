@@ -1,7 +1,7 @@
 """Database models for Instance Service."""
 
 from datetime import datetime
-from sqlalchemy import Boolean, Column, DateTime, String, Text, Index
+from sqlalchemy import Boolean, Column, DateTime, String, Text, Index, Integer, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from shared.utils.database import Base, UUIDMixin, TimestampMixin
@@ -62,3 +62,23 @@ class InstanceSyncHistory(Base, UUIDMixin, TimestampMixin):
 
     def __repr__(self):
         return f"<InstanceSyncHistory(id={self.id}, instance_id={self.instance_id}, status={self.status})>"
+
+
+class InstanceDataset(Base, UUIDMixin, TimestampMixin):
+    """Snapshot of synchronized ServiceNow data."""
+
+    __tablename__ = "instance_datasets"
+
+    instance_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    dataset_type = Column(String(50), nullable=False)
+    record_count = Column(Integer, default=0, nullable=False)
+    payload = Column(JSONB, nullable=False)
+    last_synced_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("instance_id", "dataset_type", name="uq_instance_datasets_instance_dataset"),
+        Index("ix_instance_datasets_dataset_type", dataset_type),
+    )
+
+    def __repr__(self):
+        return f"<InstanceDataset(id={self.id}, instance_id={self.instance_id}, dataset={self.dataset_type})>"

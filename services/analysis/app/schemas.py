@@ -11,6 +11,8 @@ class AnalysisRequest(BaseModel):
     instance_id: UUID
     analysis_type: str = Field(..., pattern="^(comprehensive|risk|compliance|control)$")
     modules: Optional[List[str]] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
 
 
 class AnalysisResponse(BaseModel):
@@ -23,6 +25,8 @@ class AnalysisResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
     message: str
+    title: Optional[str] = None
+    description: Optional[str] = None
 
     class Config:
         from_attributes = True

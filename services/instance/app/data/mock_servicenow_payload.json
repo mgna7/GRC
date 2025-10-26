@@ -1,0 +1,50 @@
+{
+  "controls": [
+    {
+      "sys_id": "CTRL001",
+      "name": "Access Reviews",
+      "control_number": "AC-REV-001",
+      "state": "published",
+      "u_category": "Identity"
+    },
+    {
+      "sys_id": "CTRL002",
+      "name": "Change Management",
+      "control_number": "CHG-002",
+      "state": "draft",
+      "u_category": "Operations"
+    }
+  ],
+  "risks": [
+    {
+      "sys_id": "RSK001",
+      "name": "Unauthorized Access",
+      "number": "RSK0001",
+      "state": "assessed",
+      "impact": "high"
+    },
+    {
+      "sys_id": "RSK002",
+      "name": "Data Loss",
+      "number": "RSK0002",
+      "state": "identified",
+      "impact": "medium"
+    }
+  ],
+  "compliance": [
+    {
+      "sys_id": "CMP001",
+      "name": "SOX Section 404",
+      "number": "CMP404",
+      "state": "compliant",
+      "type": "SOX"
+    },
+    {
+      "sys_id": "CMP002",
+      "name": "ISO 27001 A.9",
+      "number": "CMPISO9",
+      "state": "partial",
+      "type": "ISO"
+    }
+  ]
+}

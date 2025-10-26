@@ -1,8 +1,8 @@
 """Pydantic schemas for Instance Service API."""
 
 from datetime import datetime
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from typing import Optional, Dict, Any, List
+from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
 
 
@@ -40,12 +40,26 @@ class InstanceCreate(InstanceBase):
             raise ValueError('Username required for basic auth')
         return v
 
+    @field_validator('password')
+    @classmethod
+    def validate_basic_password(cls, v: Optional[str], info) -> Optional[str]:
+        if info.data.get('auth_type') == 'basic' and not v:
+            raise ValueError('Password required for basic auth')
+        return v
+
     @field_validator('client_id')
     @classmethod
     def validate_oauth(cls, v: Optional[str], info) -> Optional[str]:
         """Validate OAuth credentials are provided."""
         if info.data.get('auth_type') == 'oauth' and not v:
             raise ValueError('Client ID required for OAuth')
+        return v
+
+    @field_validator('client_secret')
+    @classmethod
+    def validate_oauth_secret(cls, v: Optional[str], info) -> Optional[str]:
+        if info.data.get('auth_type') == 'oauth' and not v:
+            raise ValueError('Client Secret required for OAuth')
         return v
 
 
@@ -92,6 +106,44 @@ class ConnectionTestRequest(BaseModel):
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
 
+    @field_validator('url')
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        v = v.strip()
+        if not v.startswith(('http://', 'https://')):
+            v = f'https://{v}'
+        if 'service-now.com' not in v:
+            raise ValueError('URL must be a ServiceNow domain')
+        return v
+
+    @field_validator('username')
+    @classmethod
+    def validate_test_username(cls, v: Optional[str], info) -> Optional[str]:
+        if info.data.get('auth_type') == 'basic' and not v:
+            raise ValueError('Username required for basic auth')
+        return v
+
+    @field_validator('password')
+    @classmethod
+    def validate_test_password(cls, v: Optional[str], info) -> Optional[str]:
+        if info.data.get('auth_type') == 'basic' and not v:
+            raise ValueError('Password required for basic auth')
+        return v
+
+    @field_validator('client_id')
+    @classmethod
+    def validate_test_client_id(cls, v: Optional[str], info) -> Optional[str]:
+        if info.data.get('auth_type') == 'oauth' and not v:
+            raise ValueError('Client ID required for OAuth')
+        return v
+
+    @field_validator('client_secret')
+    @classmethod
+    def validate_test_client_secret(cls, v: Optional[str], info) -> Optional[str]:
+        if info.data.get('auth_type') == 'oauth' and not v:
+            raise ValueError('Client Secret required for OAuth')
+        return v
+
 
 class ConnectionTestResponse(BaseModel):
     """Schema for connection test response."""
@@ -111,3 +163,18 @@ class SyncResponse(BaseModel):
     status: str
     message: str
     started_at: datetime
+    records_synced: Optional[Dict[str, int]] = None
+
+
+class InstanceDatasetResponse(BaseModel):
+    """Snapshot of synchronized dataset."""
+
+    id: UUID
+    instance_id: UUID
+    dataset_type: str
+    record_count: int
+    payload: List[Dict[str, Any]]
+    last_synced_at: datetime
+
+    class Config:
+        from_attributes = True

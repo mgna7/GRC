@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.database import engine
-from app.routes import router
+from app.modules.auth.views import router as auth_router
 from shared.models.common import HealthResponse
 from shared.utils.database import Base
 
@@ -52,7 +52,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(router)
+app.include_router(auth_router)
 
 
 # Health check endpoint

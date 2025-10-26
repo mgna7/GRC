@@ -19,7 +19,6 @@ RUN npm install
 
 # Copy application code
 COPY services/frontend/index.html ./index.html
-COPY services/frontend/public ./public
 COPY services/frontend/src ./src
 COPY services/frontend/tsconfig.json ./tsconfig.json
 COPY services/frontend/tsconfig.node.json ./tsconfig.node.json
@@ -50,7 +49,6 @@ RUN npm ci --only=production
 
 # Copy application code
 COPY services/frontend/index.html ./index.html
-COPY services/frontend/public ./public
 COPY services/frontend/src ./src
 COPY services/frontend/tsconfig.json ./tsconfig.json
 COPY services/frontend/tsconfig.node.json ./tsconfig.node.json

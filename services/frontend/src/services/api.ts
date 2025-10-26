@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:9000';
+const API_BASE_URL = 'http://localhost:9000';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -60,8 +60,9 @@ export const authAPI = {
   register: async (data: {
     email: string;
     password: string;
-    full_name: string;
-    role?: string;
+    organization_name: string;
+    first_name: string;
+    last_name: string;
   }) => {
     const response = await api.post('/api/v1/auth/register', data);
     return response.data;
@@ -116,15 +117,12 @@ export const instancesAPI = {
   create: async (data: {
     name: string;
     url: string;
-    organization_id: string;
-    credentials: {
-      type: 'oauth' | 'basic';
-      client_id?: string;
-      client_secret?: string;
-      username?: string;
-      password?: string;
-    };
-    is_active?: boolean;
+    description?: string;
+    auth_type: 'oauth' | 'basic';
+    username?: string;
+    password?: string;
+    client_id?: string;
+    client_secret?: string;
   }) => {
     const response = await api.post('/api/v1/instances', data);
     return response.data;
@@ -145,6 +143,18 @@ export const instancesAPI = {
     return response.data;
   },
 
+  testCredentials: async (data: {
+    url: string;
+    auth_type: 'oauth' | 'basic';
+    username?: string;
+    password?: string;
+    client_id?: string;
+    client_secret?: string;
+  }) => {
+    const response = await api.post('/api/v1/instances/test-connection', data);
+    return response.data;
+  },
+
   testConnection: async (id: string) => {
     const response = await api.post(`/api/v1/instances/${id}/test`);
     return response.data;
@@ -156,14 +166,21 @@ export const instancesAPI = {
     const response = await api.post(`/api/v1/instances/${id}/sync`, data);
     return response.data;
   },
+
+  getDatasets: async (id: string) => {
+    const response = await api.get(`/api/v1/instances/${id}/datasets`);
+    return response.data;
+  },
 };
 
 // Analysis API
 export const analysisAPI = {
   create: async (data: {
     instance_id: string;
-    analysis_type: 'comprehensive' | 'quick' | 'custom';
+    analysis_type: 'comprehensive' | 'risk' | 'control' | 'compliance';
     modules?: string[];
+    title?: string;
+    description?: string;
   }) => {
     const response = await api.post('/api/v1/analysis/analyze', data);
     return response.data;

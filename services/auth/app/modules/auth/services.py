@@ -9,8 +9,8 @@ from uuid import UUID, uuid4
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import User, RefreshToken, LoginHistory
-from app.schemas import RegisterRequest, LoginRequest
+from .models import User, RefreshToken, LoginHistory
+from .schemas import RegisterRequest, LoginRequest
 from shared.utils.encryption import encryption_handler
 from shared.utils.jwt import jwt_handler
 
